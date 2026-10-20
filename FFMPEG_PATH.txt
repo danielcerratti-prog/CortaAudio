@@ -1,0 +1,3 @@
+# Se o comando ffmpeg funcionar no Prompt de Comando, deixe este arquivo como está.
+# Caso o CortaAudio não encontre o FFmpeg, apague a linha abaixo e informe o caminho COMPLETO para ffmpeg.exe.
+# Exemplo: C:\ffmpeg\bin\ffmpeg.exe

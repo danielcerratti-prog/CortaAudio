@@ -1,0 +1,47 @@
+CORTAÁUDIO 1.1 - USA O FFMPEG JÁ INSTALADO
+==========================================
+
+O QUE FAZ
+- Abre o áudio em uma interface visual no navegador.
+- Mostra a forma de onda e permite escolher o início e o fim do corte.
+- Permite pré-escutar o trecho.
+- Usa o FFmpeg já instalado no Windows para cortar e converter.
+- Exporta para MP3, WAV, M4A/AAC, OGG e FLAC, conforme os codecs disponíveis na sua instalação do FFmpeg.
+- Não precisa do Python, do FFmpeg WebAssembly nem de baixar componentes pela internet.
+
+COMO USAR
+1. Extraia o ZIP inteiro para uma pasta.
+2. Dê dois cliques em INICIAR_CortaAudio.bat.
+3. O script abre o CortaÁudio no navegador e mantém uma janela do PowerShell aberta.
+4. Selecione o áudio, ajuste início e fim e clique em “Cortar e baixar”.
+5. Mantenha a janela do PowerShell aberta enquanto usa o editor. Para encerrar, pressione Ctrl+C nessa janela ou feche-a.
+
+SE O FFMPEG NÃO FOR ENCONTRADO
+O CortaÁudio tenta localizar ffmpeg.exe pelo PATH e em alguns diretórios comuns.
+Se não encontrar:
+1. Localize o arquivo ffmpeg.exe no seu computador.
+2. Abra FFMPEG_PATH.txt com o Bloco de Notas.
+3. Acrescente uma linha com o caminho completo. Exemplo: C:\ffmpeg\bin\ffmpeg.exe
+4. Salve o arquivo e reinicie INICIAR_CortaAudio.bat.
+
+Caso o FFmpeg esteja no PATH, você também pode testar no Prompt de Comando com: ffmpeg -version
+
+PRIVACIDADE E FUNCIONAMENTO
+- O servidor é local e escuta somente em 127.0.0.1 neste computador.
+- O arquivo passa do navegador para o serviço local do Windows e é processado pelo FFmpeg instalado. Não é enviado a sites ou serviços externos.
+- Os arquivos temporários de entrada e saída são apagados ao terminar o processamento.
+- Nenhuma conexão à internet é necessária para a conversão, desde que o Edge consiga abrir o arquivo para montar a prévia.
+- O suporte a formatos e codecs de saída depende da compilação do FFmpeg instalado. MP3, WAV, M4A/AAC, OGG e FLAC são oferecidos na interface; algumas distribuições minimalistas podem não incluir todos os codificadores.
+- A forma de onda e a pré-escuta usam os codecs compatíveis com o Microsoft Edge. Se o Edge não abrir o original, o CortaÁudio tenta criar uma prévia MP3 reduzida usando o FFmpeg local. O corte final continua sendo aplicado ao arquivo original. Essa prévia precisa do codificador MP3 no FFmpeg.
+
+SEGURANÇA
+- O serviço aceita conexões apenas do próprio computador, através do endereço 127.0.0.1.
+- Não execute a ferramenta a partir de pastas compartilhadas ou de origem desconhecida.
+
+SOLUÇÃO DE PROBLEMAS
+- Se aparecer “FFmpeg não encontrado”, configure FFMPEG_PATH.txt.
+- Se a página não abrir, use o endereço local exibido na janela do PowerShell, por exemplo http://127.0.0.1:18765/.
+- Se uma conversão falhar, a mensagem do FFmpeg aparecerá na tela. Isso pode indicar um codec ausente na instalação.
+- Se o navegador não conseguir criar a prévia de um formato, teste primeiro com MP3 ou WAV.
+
+CortaÁudio 1.1 · Sem Python · Sem instalação adicional · Conversão local

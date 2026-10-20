@@ -1,0 +1,450 @@
+<!doctype html>
+<!--
+  CortaÁudio 1.1: interface web para selecionar e exportar trechos de áudio.
+  Este arquivo contém a interface, os estilos e o código JavaScript do navegador.
+  O processamento de arquivos e a conversão são delegados ao serviço local iniciado
+  pelo INICIAR_CortaAudio.bat, que disponibiliza os endpoints /api/status,
+  /api/preview e /api/cut e chama o FFmpeg instalado no computador.
+  Manutenção: os comentários documentam o comportamento existente; o código original
+  foi mantido sem alterações nesta versão comentada.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>CortaÁudio 1.1 | Editor de cortes</title>
+<style>
+/* CSS: tokens globais de cores, contornos e sombras usados pela interface. */
+/* As regras-base abaixo definem a aparência dos componentes em telas grandes. */
+:root{--bg:#0b1020;--panel:#121a2d;--panel2:#172239;--stroke:#283650;--text:#edf3ff;--muted:#98a7c2;--accent:#66e0c2;--accent2:#36b99a;--warning:#f8c66a;--danger:#ff9b9b;--shadow:0 18px 48px rgba(0,0,0,.22)}
+*{box-sizing:border-box}html{min-width:320px;background:var(--bg)}body{margin:0;background:radial-gradient(ellipse at 12% 0%,rgba(54,185,154,.10),transparent 33%),radial-gradient(ellipse at 90% 6%,rgba(94,129,255,.11),transparent 28%),var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}button,input,select{font:inherit}button{cursor:pointer}button:disabled,input:disabled,select:disabled{opacity:.48;cursor:not-allowed}.shell{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:30px 0 42px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:28px}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,#83f4d4,#26a987);color:#071b19;box-shadow:0 7px 26px #1a9e7a33}.brand h1{font-size:22px;letter-spacing:-.5px;margin:0;font-weight:800}.brand p{font-size:12px;color:var(--muted);margin:1px 0 0}.privacy{display:flex;align-items:center;gap:8px;border:1px solid #315b55;background:#102a2a;border-radius:999px;padding:8px 12px;color:#b6f8e6;font-size:12px;font-weight:700}.privacy .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px #66e0c288}.intro{margin-bottom:22px}.eyebrow{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--accent);font-weight:800}.intro h2{font-size:clamp(26px,4.5vw,38px);line-height:1.1;letter-spacing:-1.2px;margin:7px 0 9px}.intro p{color:var(--muted);margin:0;max-width:700px}.panel{background:linear-gradient(180deg,rgba(22,32,53,.97),rgba(17,25,43,.98));border:1px solid var(--stroke);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}.upload{padding:26px;display:grid;place-items:center;text-align:center;min-height:220px;border:1px dashed #425372;border-radius:17px;background:linear-gradient(135deg,#18263b77,#10192a88);transition:.18s}.upload.dragover{border-color:var(--accent);background:#173b3b99}.upload-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:17px;background:#203d47;color:var(--accent);margin-bottom:12px}.upload h3{margin:0 0 4px;font-size:18px}.upload p{color:var(--muted);font-size:13px;margin:0 0 16px}.primary,.secondary,.quiet{border:0;border-radius:11px;padding:10px 15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:750;transition:transform .12s,background .12s}.primary{background:var(--accent);color:#09221d}.primary:hover{background:#87f2d8;transform:translateY(-1px)}.secondary{background:#24334b;color:var(--text);border:1px solid #344663}.secondary:hover{background:#2c3e59}.quiet{background:transparent;color:var(--muted);padding:8px}.quiet:hover{color:var(--text);background:#ffffff0b}.subtle{font-size:12px;color:var(--muted);margin-top:10px}.hidden{display:none!important}.editor{margin-top:18px}.filebar{display:flex;align-items:center;gap:13px;padding:18px 20px;border-bottom:1px solid var(--stroke);flex-wrap:wrap}.file-icon{display:grid;place-items:center;min-width:43px;height:43px;border-radius:13px;background:#263b4c;color:var(--accent)}.file-meta{flex:1;min-width:150px}.file-meta strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:650px}.file-meta small{display:block;color:var(--muted);margin-top:2px}.filebar-actions{display:flex;gap:7px;align-items:center}.editor-body{padding:20px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}.section-head h3{margin:0;font-size:15px}.hint{font-size:12px;color:var(--muted)}.wave-wrap{position:relative;background:#0b1425;border:1px solid #263650;border-radius:14px;overflow:hidden;padding:10px 8px 6px}.wave-canvas{display:block;width:100%;height:146px;touch-action:pan-y;cursor:crosshair}.wave-times{display:flex;justify-content:space-between;color:#8f9fba;font-size:11px;padding:0 3px 1px}.select-readout{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:13px 0 18px;flex-wrap:wrap}.duration-badge{border:1px solid #2d5a53;border-radius:9px;background:#132e30;padding:7px 10px;color:#aaf0df;font-size:12px}.range-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{background:#101a2c;border:1px solid #2c3a54;border-radius:13px;padding:13px}.field-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.field label{color:var(--muted);font-size:12px;font-weight:700}.field .field-icon{width:24px;height:24px;display:grid;place-items:center;color:var(--accent);background:#1d3d42;border-radius:7px}.field input{border:0;outline:0;background:transparent;color:var(--text);font-size:21px;font-weight:750;letter-spacing:.3px;width:100%;font-variant-numeric:tabular-nums}.field input:focus{color:#aaf0df}.field small{color:var(--muted);font-size:11px}.mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.playerbar{display:flex;align-items:center;gap:12px;margin:18px 0 22px;padding:13px 15px;background:#101a2c;border:1px solid #263650;border-radius:13px}.roundplay{width:42px;height:42px;flex-shrink:0;border-radius:50%;border:0;background:var(--accent);color:#08231d;display:grid;place-items:center}.player-note{flex:1;min-width:100px}.player-note strong{display:block;font-size:13px}.player-note span{display:block;color:var(--muted);font-size:11px}.playerbar audio{width:min(390px,48%);height:34px}.export-area{border-top:1px solid var(--stroke);margin-top:22px;padding-top:20px}.export-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.export-head h3{font-size:15px;margin:0}.export-head span{font-size:11px;color:var(--muted)}.export-grid{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(200px,1.3fr) auto;gap:12px;align-items:end}.select-field label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:0 0 7px}.select-field select{width:100%;border:1px solid #33435d;background:#111d30;color:var(--text);border-radius:11px;padding:11px 12px;outline:none}.export-desc{margin-top:8px;color:var(--muted);font-size:11px;min-height:17px}.export-btn{min-height:44px;white-space:nowrap}.status{display:flex;align-items:flex-start;gap:9px;color:var(--muted);font-size:12px;margin-top:16px;padding:11px 12px;background:#10192a;border-radius:10px;border:1px solid #263650}.status-dot{width:7px;height:7px;border-radius:50%;background:#8c9db8;margin-top:5px;flex-shrink:0}.status.good .status-dot{background:var(--accent)}.status.warn .status-dot{background:var(--warning)}.status.error .status-dot{background:var(--danger)}.progress{height:4px;border-radius:5px;background:#25334a;overflow:hidden;margin-top:10px}.progress>div{width:0;height:100%;background:var(--accent);transition:width .15s}.foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#74839e;font-size:11px;margin-top:18px;padding:0 3px}.footer-links{display:flex;gap:14px}.footer-links a{color:#9bb0cf;text-decoration:none}.footer-links a:hover{color:var(--accent)}.kbd{border:1px solid #3a4a63;background:#202d43;border-radius:5px;padding:1px 5px;font-size:10px;color:#d4deef}.modal-note{color:var(--muted);font-size:12px}.busy{pointer-events:none;opacity:.72}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Layout responsivo para telas estreitas, como celulares e janelas menores. */
+@media(max-width:720px){.shell{width:min(100% - 20px,1120px);padding-top:18px}.topbar{margin-bottom:21px}.privacy{font-size:0;padding:9px}.privacy .dot{width:8px;height:8px}.intro h2{letter-spacing:-.7px}.upload{padding:22px 13px;min-height:205px}.editor-body{padding:14px}.filebar{padding:14px}.filebar-actions .secondary{padding:8px 10px;font-size:12px}.wave-canvas{height:120px}.range-fields{gap:8px}.field{padding:10px}.field input{font-size:18px}.playerbar{flex-wrap:wrap}.playerbar audio{width:100%;max-width:100%}.export-grid{grid-template-columns:1fr 1fr}.export-grid .export-btn{grid-column:1/-1;width:100%}.export-grid .format-wrap{grid-column:1/-1}.select-field select{font-size:13px}.foot{margin-top:14px}}
+/* Ajustes adicionais para telas muito estreitas. */
+@media(max-width:420px){.brand h1{font-size:19px}.brand p{font-size:10px}.file-meta strong{max-width:200px}.filebar-actions .quiet{display:none}.range-fields{grid-template-columns:1fr}.field input{font-size:20px}.wave-canvas{height:105px}}
+</style>
+</head>
+<!-- Início da interface visível. O conteúdo é organizado em cabeçalho, seleção, editor e rodapé. -->
+<body>
+<div class="shell">
+  <!-- Identidade do aplicativo e indicação de que o processamento é local. -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg width="25" height="25" viewBox="0 0 24 24" fill="none"><path d="M4 9v6M8 5v14M12 8v8M16 3v18M20 9v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+      <div><h1>CortaÁudio</h1><p>Um editor de áudio sem complicação</p></div>
+    </div>
+    <div class="privacy"><span class="dot"></span> FFMPEG LOCAL · SEM INTERNET</div>
+  </header>
+
+  <!-- Texto introdutório: explica o fluxo principal de uso do editor. -->
+  <section class="intro">
+    <div class="eyebrow">Corte preciso • Sem timeline complicada</div>
+    <h2>O trecho certo. Sem enrolação.</h2>
+    <p>Abra um áudio, marque o início e o fim, confira a prévia e salve. O FFmpeg do seu computador faz o corte, sem enviar áudio para serviços externos.</p>
+  </section>
+
+  <!-- Área de trabalho principal: inicialmente exibe o seletor de arquivo. -->
+  <main class="panel">
+    <!-- Entrada do arquivo: aceita seleção pelo diálogo ou arrastar e soltar. -->
+    <!-- O atributo accept é uma orientação para o seletor, não uma validação do formato. -->
+    <section id="uploadArea" class="upload">
+      <div class="upload-icon" aria-hidden="true"><svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5V19a1.5 1.5 0 001.5 1.5h11A1.5 1.5 0 0019 19v-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>Escolha um arquivo de áudio</h3>
+      <p>Arraste o arquivo para cá ou procure no seu computador.</p>
+      <button class="primary" id="chooseBtn" type="button"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Selecionar áudio</button>
+      <div class="subtle">MP3, WAV, M4A, AAC, OGG, OPUS, FLAC e outros formatos compatíveis com o navegador</div>
+      <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.opus,.flac,.wma,.aiff,.aif,.webm,.mp4" class="hidden">
+    </section>
+
+    <!-- Editor oculto até que um arquivo seja carregado e apresentado ao usuário. -->
+    <section id="editor" class="editor hidden">
+      <div class="filebar">
+        <div class="file-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="file-meta"><strong id="fileName">audio.mp3</strong><small id="fileInfo">Preparando áudio…</small></div>
+        <div class="filebar-actions"><button id="replaceBtn" class="secondary" type="button">Trocar arquivo</button><button id="clearBtn" class="quiet" type="button" title="Fechar arquivo">✕</button></div>
+      </div>
+      <div class="editor-body">
+        <div class="section-head"><h3>Selecione o trecho</h3><span class="hint">Arraste as alças na forma de onda ou edite os tempos abaixo.</span></div>
+        <!-- Canvas da forma de onda; a seleção visual é sincronizada com os campos de tempo. -->
+        <div class="wave-wrap"><canvas id="waveCanvas" class="wave-canvas" aria-label="Forma de onda. Arraste as alças para ajustar o início e o fim."></canvas><div class="wave-times"><span id="waveStart">00:00.000</span><span id="waveEnd">00:00.000</span></div></div>
+        <div class="select-readout"><span class="hint">O áudio fora da seleção será removido.</span><span class="duration-badge">Trecho selecionado: <strong id="selectedDuration">00:00.000</strong></span></div>
+
+        <!-- Campos de início e fim. O JavaScript converte os valores para segundos. -->
+        <div class="range-fields">
+          <div class="field"><div class="field-top"><label for="startInput">INÍCIO DO CORTE</label><span class="field-icon">↦</span></div><input id="startInput" type="text" value="00:00.000" inputmode="decimal" spellcheck="false" aria-describedby="startHelp"><small id="startHelp">Tempo a partir do qual o áudio será mantido.</small></div>
+          <div class="field"><div class="field-top"><label for="endInput">FIM DO CORTE</label><span class="field-icon">↤</span></div><input id="endInput" type="text" value="00:00.000" inputmode="decimal" spellcheck="false" aria-describedby="endHelp"><small id="endHelp">O corte termina neste ponto.</small></div>
+        </div>
+        <div class="mini-actions"><button id="setStartBtn" class="secondary" type="button">Definir início no ponto atual</button><button id="setEndBtn" class="secondary" type="button">Definir fim no ponto atual</button><button id="resetSelectionBtn" class="quiet" type="button">Selecionar áudio inteiro</button></div>
+
+        <!-- Player HTML nativo; o JavaScript interrompe a pré-escuta ao alcançar o fim selecionado. -->
+        <div class="playerbar">
+          <button id="previewBtn" class="roundplay" type="button" aria-label="Reproduzir trecho selecionado"><svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.8c0-.8.9-1.3 1.6-.9l9.2 5.3a1 1 0 010 1.7l-9.2 5.3a1 1 0 01-1.6-.9V5.8z"/></svg></button>
+          <div class="player-note"><strong>Pré-escuta do trecho</strong><span>Reproduz apenas o intervalo selecionado.</span></div>
+          <audio id="audioPlayer" controls preload="metadata"></audio>
+        </div>
+
+        <!-- Formato e qualidade são enviados ao serviço local junto com o intervalo selecionado. -->
+        <div class="export-area">
+          <div class="export-head"><h3>Salvar corte</h3><span>Conversão feita pelo FFmpeg instalado</span></div>
+          <div class="export-grid">
+            <div class="select-field"><label for="formatSelect">FORMATO DE SAÍDA</label><select id="formatSelect"><option value="mp3">MP3 · recomendado</option><option value="wav">WAV</option><option value="m4a">M4A / AAC</option><option value="ogg">OGG Vorbis</option><option value="flac">FLAC sem perdas</option></select></div>
+            <div class="select-field format-wrap"><label for="qualitySelect">QUALIDADE</label><select id="qualitySelect"><option value="high">Alta qualidade</option><option value="balanced" selected>Equilibrada · recomendada</option><option value="compact">Arquivo menor</option></select></div>
+            <button id="exportBtn" class="primary export-btn" type="button"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg> Cortar e baixar</button>
+          </div>
+          <div class="export-desc" id="formatDescription">MP3 de alta qualidade. O motor de conversão será carregado quando necessário.</div>
+          <div id="status" class="status" role="status" aria-live="polite"><span class="status-dot"></span><div><div id="statusText">Verificando o FFmpeg local…</div><div id="progressWrap" class="progress hidden"><div id="progressBar"></div></div></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <!-- Rodapé informativo; os formatos mostrados aqui são os formatos de saída oferecidos pela interface. -->
+  <footer class="foot"><span> CortaÁudio 1.1 · FFmpeg instalado no Windows</span><div class="footer-links"><span><span class="kbd">MP3</span> <span class="kbd">WAV</span> <span class="kbd">M4A</span> <span class="kbd">OGG</span> <span class="kbd">FLAC</span></span><span>Sem cadastro</span></div></footer>
+</div>
+<script>
+  // IIFE: mantém variáveis e funções privadas ao script, sem criar nomes globais desnecessários.
+(() => {
+  'use strict';
+  // Atalho para localizar elementos pelo ID. Os IDs e referências são definidos no HTML acima.
+  const $ = (id) => document.getElementById(id);
+  // Cache das referências DOM usadas repetidamente, evitando novas buscas por ID em cada ação.
+  const els = {
+    uploadArea:$('uploadArea'), fileInput:$('fileInput'), chooseBtn:$('chooseBtn'), editor:$('editor'), fileName:$('fileName'), fileInfo:$('fileInfo'),
+    replaceBtn:$('replaceBtn'), clearBtn:$('clearBtn'), canvas:$('waveCanvas'), waveStart:$('waveStart'), waveEnd:$('waveEnd'), selectedDuration:$('selectedDuration'),
+    startInput:$('startInput'), endInput:$('endInput'), setStartBtn:$('setStartBtn'), setEndBtn:$('setEndBtn'), resetSelectionBtn:$('resetSelectionBtn'),
+    audioPlayer:$('audioPlayer'), previewBtn:$('previewBtn'), playIcon:$('playIcon'), formatSelect:$('formatSelect'), qualitySelect:$('qualitySelect'), formatDescription:$('formatDescription'),
+    exportBtn:$('exportBtn'), status:$('status'), statusText:$('statusText'), progressWrap:$('progressWrap'), progressBar:$('progressBar')
+  };
+  // Estado principal: arquivo original, recursos de reprodução, duração e limites da seleção (em segundos).
+  // A decodificação por Web Audio carrega o áudio em memória; arquivos muito grandes podem exigir bastante RAM.
+  let file = null, audioUrl = null, audioBuffer = null, audioContext = null, duration = 0, start = 0, end = 0;
+  // Estado auxiliar: amostras da forma de onda, arraste, temporizador, bloqueio de ações e URLs temporárias.
+  let peaks = [], dragging = null, playTimer = null, busy = false, activeDownloadUrl = null, ffmpegStatus = null;
+  // Fragmentos SVG reutilizados para alternar o ícone do botão de pré-escuta.
+  const SVG_PLAY = '<path d="M8 5.8c0-.8.9-1.3 1.6-.9l9.2 5.3a1 1 0 010 1.7l-9.2 5.3a1 1 0 01-1.6-.9V5.8z"/>';
+  const SVG_PAUSE = '<path d="M7 5.5A1.5 1.5 0 018.5 4h1A1.5 1.5 0 0111 5.5v13a1.5 1.5 0 01-1.5 1.5h-1A1.5 1.5 0 017 18.5v-13zm6 0A1.5 1.5 0 0114.5 4h1A1.5 1.5 0 0117 5.5v13a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5v-13z"/>';
+
+  /** Atualiza a mensagem de status, sua categoria visual e, quando informado, o indicador de progresso. */
+  function setStatus(message, kind='normal', progress=null) {
+    els.status.className = 'status' + (kind === 'normal' ? '' : ' ' + kind);
+    els.statusText.textContent = message;
+    if (progress === null) els.progressWrap.classList.add('hidden');
+    else { els.progressWrap.classList.remove('hidden'); els.progressBar.style.width = Math.max(0, Math.min(100, progress)) + '%'; }
+  }
+  /** Formata segundos em HH:MM:SS.mmm (omitindo as horas quando são zero). */
+  function fmt(t) {
+    t = Math.max(0, Number.isFinite(t) ? t : 0);
+    const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = Math.floor(t % 60), ms = Math.floor((t - Math.floor(t)) * 1000 + 0.0001);
+    return (h ? String(h).padStart(2,'0') + ':' : '') + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + '.' + String(ms).padStart(3,'0');
+  }
+  /** Interpreta um tempo em segundos ou no formato MM:SS / HH:MM:SS; vírgula decimal também é aceita. */
+  // Observação: a função valida o formato numérico, mas não exige que cada componente após ":" seja menor que 60.
+  function parseTime(raw) {
+    const v = String(raw).trim().replace(',', '.');
+    if (!v) return NaN;
+    if (/^\d+(\.\d+)?$/.test(v)) return Number(v);
+    const parts = v.split(':');
+    if (parts.length < 2 || parts.length > 3 || parts.some(p => !/^\d+(\.\d+)?$/.test(p))) return NaN;
+    let n = 0;
+    if (parts.length === 2) n = Number(parts[0]) * 60 + Number(parts[1]);
+    else n = Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2]);
+    return n;
+  }
+  /** Mantém os limites dentro da duração do áudio e tenta garantir uma seleção mínima de 0,01 segundo. */
+  function clampSelection(which, value) {
+    if (!Number.isFinite(value)) { setStatus('Digite um tempo válido, como 00:12.500 ou 12.5.', 'warn'); return; }
+    if (which === 'start') start = Math.max(0, Math.min(value, Math.max(0, end - 0.01)));
+    else end = Math.max(Math.min(duration, value), Math.min(duration, start + 0.01));
+    if (end - start < 0.01) {
+      if (which === 'start') start = Math.max(0, end - 0.01);
+      else end = Math.min(duration, start + 0.01);
+    }
+    syncSelection();
+  }
+  /** Atualiza campos, duração selecionada, rótulos e desenho após qualquer alteração dos limites. */
+  function syncSelection() {
+    els.startInput.value = fmt(start); els.endInput.value = fmt(end);
+    els.selectedDuration.textContent = fmt(Math.max(0, end - start));
+    els.waveStart.textContent = 'INÍCIO ' + fmt(start); els.waveEnd.textContent = 'FIM ' + fmt(end);
+    drawWaveform();
+  }
+  /** Bloqueia ou libera os controles durante operações assíncronas, evitando ações concorrentes na interface. */
+  function setBusy(state) {
+    busy = state;
+    [els.chooseBtn,els.replaceBtn,els.clearBtn,els.setStartBtn,els.setEndBtn,els.resetSelectionBtn,els.previewBtn,els.exportBtn,els.formatSelect,els.qualitySelect].forEach(el => el.disabled = state);
+    els.startInput.disabled = state; els.endInput.disabled = state;
+    els.editor.classList.toggle('busy', state);
+  }
+  /** Converte uma quantidade de bytes para uma apresentação legível em B, KB, MB ou GB. */
+  function niceSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    const u = ['KB','MB','GB']; let n = bytes/1024, i=0;
+    while (n >= 1024 && i < u.length-1) {n/=1024;i++;}
+    return n.toFixed(n >= 100 ? 0 : 1) + ' ' + u[i];
+  }
+  // Utilitários de nome de arquivo: extração da extensão e sanitização da parte usada no nome de saída.
+  // Observação de manutenção: extOf está definido neste arquivo, mas não é chamado por outro trecho do script.
+  function extOf(name) { const m = String(name).match(/\.([^.]+)$/); return m ? m[1].toLowerCase() : 'audio'; }
+  function safeBase(name) { return String(name).replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g,'_').trim() || 'audio'; }
+
+  /** Carrega o arquivo, tenta decodificá-lo no navegador e cria os dados necessários para a forma de onda.
+   * Se a decodificação nativa falhar, solicita ao serviço local uma prévia compatível para reprodução.
+   * A exportação posterior continua enviando o arquivo original, e não o blob usado apenas como prévia.
+   */
+  async function loadFile(nextFile) {
+    if (!nextFile) return;
+    stopPreview();
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    file = nextFile; audioUrl = URL.createObjectURL(file); audioBuffer = null; peaks = [];
+    els.uploadArea.classList.add('hidden'); els.editor.classList.remove('hidden');
+    els.fileName.textContent = file.name; els.fileName.title = file.name;
+    els.fileInfo.textContent = niceSize(file.size) + ' · lendo duração e forma de onda…';
+    els.audioPlayer.src = audioUrl; els.audioPlayer.load();
+    setStatus('Lendo o áudio no seu navegador…');
+    setBusy(true);
+    try {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const bytes = await file.arrayBuffer();
+      audioBuffer = await audioContext.decodeAudioData(bytes.slice(0));
+      duration = audioBuffer.duration; start = 0; end = duration;
+      if (!Number.isFinite(duration) || duration <= 0) throw new Error('A duração do áudio não pôde ser identificada.');
+      buildPeaks(); syncSelection();
+      els.fileInfo.textContent = `${fmt(duration)} · ${audioBuffer.sampleRate.toLocaleString('pt-BR')} Hz · ${audioBuffer.numberOfChannels === 1 ? 'mono' : audioBuffer.numberOfChannels + ' canais'} · ${niceSize(file.size)}`;
+      setStatus('Áudio pronto. Marque o trecho e clique em “Cortar e baixar”.', 'good');
+      updateFormatDescription();
+    } catch (err) {
+      try {
+        setStatus('Preparando uma prévia compatível com o navegador usando o FFmpeg local…', 'warn', 12);
+        const params = new URLSearchParams({filename:file.name});
+        const response = await fetch('/api/preview?' + params.toString(), {
+          method:'POST', headers:{'Content-Type':'application/octet-stream'}, body:file, cache:'no-store'
+        });
+        if (!response.ok) {
+          let message = 'O FFmpeg não conseguiu preparar a prévia deste formato.';
+          try { const data = await response.json(); message = data.error || data.message || message; } catch {}
+          throw new Error(message);
+        }
+        const previewBlob = await response.blob();
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        audioUrl = URL.createObjectURL(previewBlob);
+        els.audioPlayer.src = audioUrl; els.audioPlayer.load();
+        audioBuffer = await audioContext.decodeAudioData(await previewBlob.arrayBuffer());
+        duration = audioBuffer.duration; start = 0; end = duration;
+        if (!Number.isFinite(duration) || duration <= 0) throw new Error('A duração do áudio não pôde ser identificada.');
+        buildPeaks(); syncSelection();
+        els.fileInfo.textContent = `${fmt(duration)} · prévia preparada pelo FFmpeg · original ${niceSize(file.size)}`;
+        setStatus('Prévia pronta. O corte será aplicado ao arquivo original, não à prévia reduzida.', 'good');
+        updateFormatDescription();
+      } catch (previewErr) {
+        audioBuffer = null; duration = 0; start = 0; end = 0;
+        drawWaveform();
+        els.fileInfo.textContent = niceSize(file.size) + ' · não foi possível criar a prévia';
+        setStatus('Não foi possível preparar a prévia. Abra esta ferramenta pelo INICIAR_CortaAudio.bat e confira se o FFmpeg está funcionando. Detalhe: ' + (previewErr?.message || err?.message || 'formato incompatível'), 'error');
+        els.exportBtn.disabled = true;
+      }
+    } finally {
+      setBusy(false);
+      els.exportBtn.disabled = !audioBuffer;
+    }
+  }
+  /** Calcula uma representação reduzida de picos de amplitude para desenhar a forma de onda com eficiência.
+   * A forma desenhada é visual e aproximada; o FFmpeg usa os tempos informados no corte final.
+   */
+  function buildPeaks() {
+    peaks = [];
+    if (!audioBuffer) return;
+    const count = Math.min(1800, Math.max(400, Math.floor(els.canvas.clientWidth * 1.7)));
+    const channels = Array.from({length:audioBuffer.numberOfChannels}, (_,i) => audioBuffer.getChannelData(i));
+    const block = Math.max(1, Math.floor(audioBuffer.length / count));
+    for (let i = 0; i < count; i++) {
+      const a = i * block, b = Math.min(audioBuffer.length, a + block); let p = 0;
+      for (const ch of channels) for (let j = a; j < b; j += 12) { const v = Math.abs(ch[j]); if (v > p) p = v; }
+      peaks.push(p);
+    }
+  }
+  /** Desenha a forma de onda, escurece as áreas excluídas e indica os limites e a posição de reprodução. */
+  function drawWaveform() {
+    const canvas = els.canvas, rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.round(rect.width * dpr); canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+    const w = rect.width, h = rect.height, mid = h/2;
+    ctx.clearRect(0,0,w,h); ctx.fillStyle = '#0b1425'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = '#1b2b43'; ctx.lineWidth = 1;
+    for (let i=1;i<4;i++){const y = h*i/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    if (!audioBuffer || !peaks.length || !duration) {
+      ctx.fillStyle = '#657895';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('A forma de onda aparecerá aqui',w/2,mid+4);return;
+    }
+    const sx = start/duration*w, ex = end/duration*w;
+    ctx.fillStyle = 'rgba(6,12,24,.64)';ctx.fillRect(0,0,sx,h);ctx.fillRect(ex,0,w-ex,h);
+    const step = w/peaks.length, barW = Math.max(1,step*0.64);
+    for (let i=0;i<peaks.length;i++) {
+      const x=i*step, amp=Math.max(2,peaks[i]*(h*.43));
+      const inside = x+step >= sx && x <= ex;
+      ctx.fillStyle = inside ? '#66e0c2' : '#405570';
+      ctx.fillRect(x,mid-amp,barW,amp*2);
+    }
+    // Dim the excluded areas after drawing bars so selected audio is visually clear.
+    ctx.fillStyle = 'rgba(4,10,21,.52)';ctx.fillRect(0,0,sx,h);ctx.fillRect(ex,0,w-ex,h);
+    ctx.fillStyle='#8cf2d7';
+    ctx.fillRect(sx,0,2,h);ctx.fillRect(Math.max(0,ex-2),0,2,h);
+    ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx+9,0);ctx.lineTo(sx,10);ctx.fill();
+    ctx.beginPath();ctx.moveTo(ex,0);ctx.lineTo(ex-9,0);ctx.lineTo(ex,10);ctx.fill();
+    const playhead = (els.audioPlayer.currentTime || 0)/duration*w;
+    if (playhead >= 0 && playhead <= w) {ctx.strokeStyle='#fff4cd';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(playhead,0);ctx.lineTo(playhead,h);ctx.stroke();}
+  }
+  // Converte a coordenada horizontal do ponteiro em proporção de 0 a 1 dentro do canvas.
+  function canvasX(evt) { const r=els.canvas.getBoundingClientRect(); return Math.max(0,Math.min(1,(evt.clientX-r.left)/r.width)); }
+  // Interações por ponteiro permitem arrastar os limites usando mouse, toque ou caneta compatível.
+  els.canvas.addEventListener('pointerdown', e => {
+    if (!audioBuffer || busy) return;
+    const x=canvasX(e), sx=start/duration, ex=end/duration;
+    dragging = Math.abs(x-sx) < Math.abs(x-ex) ? 'start' : 'end';
+    if (Math.abs(x-sx) > .08 && Math.abs(x-ex) > .08) dragging = x < sx ? 'start' : (x > ex ? 'end' : (Math.abs(x-sx)<Math.abs(x-ex)?'start':'end'));
+    els.canvas.setPointerCapture(e.pointerId); moveHandle(e);
+  });
+  els.canvas.addEventListener('pointermove', e => { if (dragging) moveHandle(e); });
+  els.canvas.addEventListener('pointerup', () => { dragging=null; });
+  els.canvas.addEventListener('pointercancel', () => { dragging=null; });
+  // Converte a posição arrastada para segundos e atualiza o limite atualmente selecionado.
+  function moveHandle(e) { const t=canvasX(e)*duration; if (dragging==='start') start=Math.max(0,Math.min(t,end-.01)); else if (dragging==='end') end=Math.min(duration,Math.max(t,start+.01)); syncSelection(); }
+  els.canvas.addEventListener('dblclick', e => { if (!audioBuffer) return; const t=canvasX(e)*duration; els.audioPlayer.currentTime=t; drawWaveform(); });
+
+  /** Encerra a pré-escuta e limpa o temporizador associado ao acompanhamento do limite final. */
+  function stopPreview() {
+    if (playTimer) {clearInterval(playTimer);playTimer=null;}
+    if (!els.audioPlayer.paused) els.audioPlayer.pause();
+    els.playIcon.innerHTML=SVG_PLAY;
+  }
+  /** Reproduz somente o intervalo selecionado; a reprodução é parada quando alcança o tempo final. */
+  async function previewSelection() {
+    if (!audioBuffer) return;
+    if (!els.audioPlayer.paused) {stopPreview();return;}
+    if (els.audioPlayer.currentTime < start || els.audioPlayer.currentTime >= end) els.audioPlayer.currentTime=start;
+    try { await els.audioPlayer.play(); els.playIcon.innerHTML=SVG_PAUSE; }
+    catch { setStatus('Não foi possível iniciar a reprodução. Clique no player de áudio para tentar novamente.', 'warn');return; }
+    if (playTimer) clearInterval(playTimer);
+    playTimer=setInterval(()=>{
+      if (els.audioPlayer.currentTime >= end) stopPreview();
+      drawWaveform();
+    },60);
+  }
+  els.audioPlayer.addEventListener('timeupdate',()=>drawWaveform());
+  els.audioPlayer.addEventListener('pause',()=>{if(playTimer){clearInterval(playTimer);playTimer=null;}els.playIcon.innerHTML=SVG_PLAY;drawWaveform();});
+  els.audioPlayer.addEventListener('ended',()=>stopPreview());
+
+  /** Cria um link temporário para baixar o arquivo gerado e libera a URL anterior quando necessário. */
+  // A URL atual é revogada após 60 segundos para reduzir o tempo de retenção de recursos em memória.
+  function downloadBlob(blob, name) {
+    if (activeDownloadUrl) URL.revokeObjectURL(activeDownloadUrl);
+    activeDownloadUrl=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=activeDownloadUrl;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>{if(activeDownloadUrl){URL.revokeObjectURL(activeDownloadUrl);activeDownloadUrl=null;}},60000);
+  }
+
+  /** Consulta o endpoint local de status para verificar se o serviço encontrou o executável FFmpeg. */
+  async function checkLocalFFmpeg() {
+    try {
+      const response = await fetch('/api/status', {cache:'no-store'});
+      const data = await response.json();
+      ffmpegStatus = data;
+      if (data.ok) {
+        setStatus('FFmpeg encontrado: ' + (data.version || 'instalado') + '. Os cortes e conversões serão feitos neste computador.', 'good');
+      } else {
+        setStatus(data.message || 'FFmpeg não encontrado. Confira o arquivo FFMPEG_PATH.txt.', 'warn');
+      }
+    } catch (err) {
+      ffmpegStatus = {ok:false};
+      setStatus('Abra a ferramenta pelo arquivo INICIAR_CortaAudio.bat. Ele inicia o serviço local que conversa com o FFmpeg instalado.', 'warn');
+    }
+  }
+  /** Envia o arquivo original e os parâmetros do corte ao serviço local, que executa a conversão com FFmpeg.
+   * A requisição usa o mesmo servidor local da interface; não é uma chamada a um serviço de internet.
+   */
+  async function exportWithLocalFFmpeg(format, quality) {
+    if (ffmpegStatus && ffmpegStatus.ok === false) {
+      throw new Error(ffmpegStatus.message || 'O FFmpeg não foi localizado. Confira FFMPEG_PATH.txt e reinicie a ferramenta.');
+    }
+    setStatus('Cortando e convertendo com o FFmpeg do computador…', 'warn', 15);
+    const params = new URLSearchParams({
+      start: start.toFixed(3), end: end.toFixed(3), format, quality, filename: file.name
+    });
+    let response;
+    try {
+      response = await fetch('/api/cut?' + params.toString(), {
+        method:'POST', headers:{'Content-Type':'application/octet-stream'}, body:file, cache:'no-store'
+      });
+    } catch (err) {
+      throw new Error('Não consegui acessar o serviço local. Feche esta aba e abra INICIAR_CortaAudio.bat novamente.');
+    }
+    if (!response.ok) {
+      let detail = '';
+      try { const errorData = await response.json(); detail = errorData.error || errorData.message || ''; } catch { try { detail = await response.text(); } catch {} }
+      throw new Error(detail || 'O FFmpeg não conseguiu concluir o corte.');
+    }
+    const blob = await response.blob();
+    if (!blob.size) throw new Error('O FFmpeg retornou um arquivo vazio.');
+    downloadBlob(blob, `${safeBase(file.name)}_cortado.${format}`);
+    setStatus(`Corte concluído. Arquivo ${format.toUpperCase()} salvo pelo navegador.`, 'good', 100);
+  }
+  /** Valida o intervalo e coordena o início/fim da exportação, mostrando erros ao usuário se necessário. */
+  async function exportAudio() {
+    if (!file || !audioBuffer || busy) return;
+    if (!(end>start) || end-start<.01) {setStatus('Escolha um intervalo válido de pelo menos 0,01 segundo.', 'warn');return;}
+    const format=els.formatSelect.value, quality=els.qualitySelect.value;
+    setBusy(true);
+    try {
+      await exportWithLocalFFmpeg(format, quality);
+    } catch(err) {
+      console.error(err);
+      setStatus(err?.message || 'Ocorreu um erro ao exportar.', 'error');
+    } finally {setBusy(false);}
+  }
+  /** Atualiza a descrição textual de acordo com o formato e a qualidade selecionados na interface. */
+  function updateFormatDescription() {
+    const fmtName=els.formatSelect.value, quality=els.qualitySelect.value;
+    const descriptions={
+      mp3:'MP3 produzido pelo FFmpeg instalado no computador.',
+      wav:'WAV PCM 16-bit. Sem perdas na conversão PCM, mas gera arquivos maiores.',
+      m4a:'M4A com áudio AAC. Boa relação entre qualidade e tamanho.',
+      ogg:'OGG Vorbis, útil em aplicações compatíveis.',
+      flac:'FLAC sem perdas, indicado para preservar a qualidade.'
+    };
+    const q={high:'Qualidade alta selecionada.',balanced:'Configuração equilibrada selecionada.',compact:'Configuração compacta selecionada.'};
+    els.formatDescription.textContent=descriptions[fmtName]+' '+(fmtName==='flac'||fmtName==='wav'?'':q[quality])+' Requer INICIAR_CortaAudio.bat aberto.';
+  }
+  /** Limpa o estado do editor e solta URLs temporárias antes de voltar à tela de seleção de arquivo. */
+  function resetApp() {
+    stopPreview(); if(audioUrl) URL.revokeObjectURL(audioUrl);audioUrl=null;file=null;audioBuffer=null;duration=0;start=0;end=0;peaks=[];els.audioPlayer.removeAttribute('src');els.audioPlayer.load();els.fileInput.value='';els.editor.classList.add('hidden');els.uploadArea.classList.remove('hidden');els.exportBtn.disabled=false;drawWaveform();setStatus('Pronto para começar. O FFmpeg é executado localmente.');
+  }
+
+  // Registro de eventos: conecta os controles da interface às funções de seleção, corte e pré-escuta.
+  els.chooseBtn.addEventListener('click',()=>els.fileInput.click());els.replaceBtn.addEventListener('click',()=>els.fileInput.click());
+  els.fileInput.addEventListener('click',()=>{els.fileInput.value='';});
+  els.fileInput.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)loadFile(f);});
+  els.clearBtn.addEventListener('click',resetApp);
+  els.startInput.addEventListener('change',()=>clampSelection('start',parseTime(els.startInput.value)));
+  els.endInput.addEventListener('change',()=>clampSelection('end',parseTime(els.endInput.value)));
+  els.startInput.addEventListener('keydown',e=>{if(e.key==='Enter')els.startInput.blur();});els.endInput.addEventListener('keydown',e=>{if(e.key==='Enter')els.endInput.blur();});
+  els.setStartBtn.addEventListener('click',()=>{if(!audioBuffer)return;clampSelection('start',els.audioPlayer.currentTime);});
+  els.setEndBtn.addEventListener('click',()=>{if(!audioBuffer)return;clampSelection('end',els.audioPlayer.currentTime);});
+  els.resetSelectionBtn.addEventListener('click',()=>{if(!audioBuffer)return;start=0;end=duration;syncSelection();});
+  els.previewBtn.addEventListener('click',previewSelection);
+  els.exportBtn.addEventListener('click',exportAudio);
+  els.formatSelect.addEventListener('change',updateFormatDescription);els.qualitySelect.addEventListener('change',updateFormatDescription);
+  // Arrastar e soltar: impede o comportamento padrão do navegador e destaca a área de destino.
+  ['dragenter','dragover'].forEach(n=>els.uploadArea.addEventListener(n,e=>{e.preventDefault();els.uploadArea.classList.add('dragover');}));
+  ['dragleave','drop'].forEach(n=>els.uploadArea.addEventListener(n,e=>{e.preventDefault();els.uploadArea.classList.remove('dragover');}));
+  els.uploadArea.addEventListener('drop',e=>{const f=e.dataTransfer?.files?.[0];if(f)loadFile(f);});
+  // Ao redimensionar a janela, refaz a amostragem visual e redesenha o canvas para manter a escala correta.
+  window.addEventListener('resize',()=>{if(audioBuffer)buildPeaks();drawWaveform();});
+  // Libera URLs temporárias quando a página é fechada ou recarregada.
+  window.addEventListener('beforeunload',()=>{if(audioUrl)URL.revokeObjectURL(audioUrl);if(activeDownloadUrl)URL.revokeObjectURL(activeDownloadUrl);});
+  // Inicialização: preenche a descrição inicial do formato e consulta o status do serviço FFmpeg local.
+  updateFormatDescription();
+  checkLocalFFmpeg();
+})();
+</script>
+</body>
+</html>
